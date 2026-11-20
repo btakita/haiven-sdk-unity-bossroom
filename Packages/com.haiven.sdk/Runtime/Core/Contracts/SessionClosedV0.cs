@@ -1,0 +1,21 @@
+// Vendored from codegen/emitted-contracts/SessionClosedV0.cs by scripts/vendor-unity.py.
+// Edit or regenerate the source, then run `make vendor-unity`.
+// Generated from the published Haiven contract schemas. Do not edit by hand.
+//
+// The nullability of a presence discriminant is deliberate and is NOT derived
+// from `required`.
+
+#nullable enable
+
+namespace Haiven.Sdk.Contracts
+{
+	/// <summary>A peer-to-peer session closed; every member stops playing in it.</summary>
+	public sealed class SessionClosedV0
+	{
+		/// <summary>The session.</summary>
+		public string SessionId { get; set; } = null!;
+
+		/// <summary>The end reason of the host's participation that closed the session.</summary>
+		public string Reason { get; set; } = null!;
+	}
+}

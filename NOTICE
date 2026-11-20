@@ -1,0 +1,47 @@
+Haiven Boss Room demo
+Copyright 2026 Haiven Inc.
+
+This repository is Unity's Boss Room sample with Haiven integration code
+added to it. It carries two licenses, split by path. Apart from the
+third-party components listed at the end of this file, each path is under
+exactly one of them, and neither replaces the other.
+
+Haiven-owned paths: Apache License 2.0 (SPDX Apache-2.0)
+Copyright 2026 Haiven Inc.
+
+  Packages/com.haiven.sdk/                  terms: Packages/com.haiven.sdk/LICENSE
+  Packages/com.haiven.demo.bossroom/        terms: Packages/com.haiven.demo.bossroom/LICENSE
+  Assets/HaivenGenerated/ (and its .meta)   terms: Assets/HaivenGenerated/LICENSE.txt
+  Assets/Scripts/Editor/HaivenCrossPlatformPlayerBuild.cs (and its .meta)
+  Documentation/haiven-versioning.md
+  .haiven/ (promotion provenance, generated)
+  NOTICE (this file)
+
+The last four paths carry no license file of their own. They are under
+the same Apache License 2.0 text as the paths above them.
+
+Unity-owned paths: Unity Companion License
+Copyright 2021 Unity Technologies (see LICENSE.md)
+
+  Every other path in this repository, apart from the third-party
+  components below: the Boss Room code and assets, including Boss Room
+  files that Haiven has modified.
+  Terms: LICENSE.md and Packages/com.unity.multiplayer.samples.coop/LICENSE.md
+  (https://unity3d.com/legal/licenses/unity_companion_license).
+
+Third-party components that Boss Room bundles keep their own licenses:
+
+  The components listed in "Third Party Notices.md".
+  The fonts in Assets/TextMesh Pro/Fonts/: Bungee and Liberation Sans
+  under the SIL Open Font License 1.1 (SPDX OFL-1.1), and Roboto under
+  Apache-2.0. Each font's license file sits next to it. The TextMesh Pro
+  font assets built from these fonts keep that font's license:
+    Assets/Fonts/Bungee-Regular SDF.asset                       (Bungee)
+    Assets/Fonts/Roboto-Bold SDF.asset                          (Roboto)
+    Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset
+    Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset
+  The EmojiOne sprites, provided by EmojiOne under its own terms. See
+  Assets/TextMesh Pro/Sprites/EmojiOne Attribution.txt. They are:
+    Assets/TextMesh Pro/Sprites/EmojiOne.png
+    Assets/TextMesh Pro/Sprites/EmojiOne.json
+    Assets/TextMesh Pro/Resources/Sprite Assets/EmojiOne.asset

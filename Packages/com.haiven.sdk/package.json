@@ -1,0 +1,30 @@
+{
+  "name": "com.haiven.sdk",
+  "version": "0.0.0",
+  "displayName": "Haiven SDK",
+  "description": "Client SDK for Haiven WebSocket and game login handoff APIs in Unity, including WebGL.",
+  "license": "Apache-2.0",
+  "unity": "6000.0",
+  "documentationUrl": "https://github.com/haiven-dev/haiven-sdk-unity-bossroom/blob/cadcd898508410f1753d370f9d8f27d8e2a3f9e4/Packages/com.haiven.sdk/README.md",
+  "keywords": [
+    "haiven",
+    "sdk",
+    "websocket",
+    "authentication"
+  ],
+  "author": {
+    "name": "Haiven"
+  },
+  "dependencies": {
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0",
+    "com.unity.webrtc": "3.0.0"
+  },
+  "samples": [
+    {
+      "displayName": "Netcode for GameObjects transport",
+      "description": "HaivenNetworkTransport: Netcode for GameObjects over the Haiven P2P controller and the WebRTC transport. Needs com.unity.netcode.gameobjects 2.4.",
+      "path": "Samples~/Netcode"
+    }
+  ]
+}

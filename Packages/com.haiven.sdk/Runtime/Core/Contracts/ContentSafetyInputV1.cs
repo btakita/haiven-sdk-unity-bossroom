@@ -1,0 +1,30 @@
+// Vendored from codegen/emitted-contracts/ContentSafetyInputV1.cs by scripts/vendor-unity.py.
+// Edit or regenerate the source, then run `make vendor-unity`.
+// Generated from the published Haiven contract schemas. Do not edit by hand.
+//
+// The nullability of a presence discriminant is deliberate and is NOT derived
+// from `required`.
+
+#nullable enable
+
+namespace Haiven.Sdk.Contracts
+{
+	/// <summary>The input a client hands to the embedded policy evaluator for one piece of content.</summary>
+	public sealed class ContentSafetyInputV1
+	{
+		/// <summary>Kind of content being assessed, such as chat-message.</summary>
+		public string SignalType { get; set; } = null!;
+
+		/// <summary>Reference to the content's subject, as type:identifier.</summary>
+		public string SubjectRef { get; set; } = null!;
+
+		/// <summary>Fused severity of the local evidence for this content.</summary>
+		public object? FusedSeverity { get; set; } = null!;
+
+		/// <summary>Confidence in the fused severity, from 0 to 1.</summary>
+		public double FusedConfidence { get; set; }
+
+		/// <summary>Fusion summary the policy bundle's rules match against, as level names and engine-name lists.</summary>
+		public object PolicyRuntimeSummary { get; set; } = null!;
+	}
+}

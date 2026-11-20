@@ -1,0 +1,24 @@
+{
+  "name": "Haiven.Demo.BossRoom",
+  "rootNamespace": "Haiven.Demo.BossRoom",
+  "references": [
+    "Haiven.Sdk",
+    "Haiven.Sdk.Core",
+    "UnityEngine.UI",
+    "Haiven.Demo.BossRoom.P2P",
+    "Unity.Netcode.Runtime",
+    "Unity.TextMeshPro",
+    "Haiven.Sdk.WebRtc",
+    "Haiven.Sdk.Samples.Netcode"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [
+    "WebGL"
+  ],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

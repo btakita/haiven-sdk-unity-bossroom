@@ -1,0 +1,22 @@
+{
+  "name": "Haiven.Demo.BossRoom.P2P",
+  "rootNamespace": "Haiven.Demo.BossRoom.P2P",
+  "references": [
+    "Haiven.Sdk.Core",
+    "Haiven.Sdk.WebRtc",
+    "Haiven.Sdk.Samples.Netcode",
+    "Unity.Netcode.Runtime",
+    "Unity.Networking.Transport"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [
+    "WebGL"
+  ],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
