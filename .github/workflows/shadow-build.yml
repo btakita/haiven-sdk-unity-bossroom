@@ -104,7 +104,7 @@ jobs:
         working-directory: source
         shell: bash
         run: git lfs pull
-      - name: Start the pinned Unity editor and activate its licence
+      - name: Activate a Unity licence in a container that never sees the project
         env:
           IMAGE: ${{ matrix.image }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -114,27 +114,53 @@ jobs:
         shell: bash
         run: |
           [[ "$IMAGE" =~ ^unityci/editor:ubuntu-[0-9a-z.]+-[a-z0-9-]+@sha256:[0-9a-f]{64}$ ]]
-          docker run --detach --name haiven-unity --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
-            --entrypoint sleep "$IMAGE" infinity >/dev/null
-          # Activation logs can name the account, so they stay inside the container.
+          # Activation, build and seat return each run in their own container. Only this one and
+          # the return container receive the account, always on stdin, never as docker arguments
+          # or container environment. The build container starts from the committed licence
+          # state, so build code can read the licence but never the email, password or serial.
+          # All three share one hostname and MAC address so the licence's machine binding holds.
+          identity=(--hostname haiven-unity --mac-address 02:42:ac:11:00:2a)
+          status=0
           if [[ -n "$UNITY_SERIAL" ]]; then
-            docker exec --env UNITY_EMAIL --env UNITY_PASSWORD --env UNITY_SERIAL haiven-unity sh -c \
-              'unity-editor -batchmode -nographics -quit -logFile /tmp/activate.log \
-                -serial "$UNITY_SERIAL" -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"' \
-              || { echo "Unity serial activation failed." >&2; exit 1; }
+            printf '%s\n%s\n%s\n' "$UNITY_EMAIL" "$UNITY_PASSWORD" "$UNITY_SERIAL" |
+              docker run --interactive --name haiven-unity-activate "${identity[@]}" \
+                --entrypoint sh "$IMAGE" -c \
+                'IFS= read -r email && IFS= read -r password && IFS= read -r serial || exit 1
+                 unity-editor -batchmode -nographics -quit -logFile /tmp/activate.log \
+                   -serial "$serial" -username "$email" -password "$password"; s=$?
+                 rm -f /tmp/activate.log "$HOME"/.config/unity3d/*.log "$HOME"/.config/unity3d/Unity/*.log
+                 exit "$s"' || status=$?
           elif [[ -n "$UNITY_LICENSE" ]]; then
-            printf '%s' "$UNITY_LICENSE" | docker exec --interactive haiven-unity sh -c \
-              'cat > /tmp/Unity_lic.ulf && unity-editor -batchmode -nographics -quit \
-                -logFile /tmp/activate.log -manualLicenseFile /tmp/Unity_lic.ulf; rm -f /tmp/Unity_lic.ulf' \
-              || { echo "Unity licence file activation failed." >&2; exit 1; }
+            printf '%s' "$UNITY_LICENSE" |
+              docker run --interactive --name haiven-unity-activate "${identity[@]}" \
+                --entrypoint sh "$IMAGE" -c \
+                'cat > /tmp/Unity_lic.ulf || exit 1
+                 unity-editor -batchmode -nographics -quit -logFile /tmp/activate.log \
+                   -manualLicenseFile /tmp/Unity_lic.ulf; s=$?
+                 rm -f /tmp/Unity_lic.ulf /tmp/activate.log "$HOME"/.config/unity3d/*.log \
+                   "$HOME"/.config/unity3d/Unity/*.log
+                 exit "$s"' || status=$?
           else
             echo "Set UNITY_LICENSE or UNITY_SERIAL in the shadow-source environment." >&2
             exit 1
           fi
+          # Commit even a failed activation so the always-run step can still return a seat.
+          if docker container inspect haiven-unity-activate >/dev/null 2>&1; then
+            docker commit haiven-unity-activate haiven-unity-licensed:local >/dev/null
+            docker rm haiven-unity-activate >/dev/null
+          fi
+          if (( status != 0 )); then
+            echo "Unity licence activation failed." >&2
+            exit 1
+          fi
+          docker run --detach --name haiven-unity-build "${identity[@]}" \
+            --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            --entrypoint sleep haiven-unity-licensed:local infinity >/dev/null
           launcher="$RUNNER_TEMP/unity-editor/unity"
           mkdir -p "$(dirname "$launcher")"
           # shellcheck disable=SC2016 # $PWD and $@ expand when the launcher runs.
-          printf '#!/bin/sh\nexec docker exec --workdir "$PWD" haiven-unity unity-editor "$@"\n' > "$launcher"
+          printf '#!/bin/sh\nexec docker exec --workdir "$PWD" haiven-unity-build unity-editor "$@"\n' \
+            > "$launcher"
           chmod +x "$launcher"
           printf 'UNITY_EDITOR=%s\n' "$launcher" >> "$GITHUB_ENV"
       - id: build
@@ -158,7 +184,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 3
-      - name: Return a Unity serial and stop the editor
+      - name: Stop the build container and return the Unity serial
         if: always()
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -166,13 +192,20 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         shell: bash
         run: |
-          if docker inspect haiven-unity >/dev/null 2>&1; then
+          # Force-removing the build container kills anything build code left running in it
+          # before the account is used again.
+          docker rm --force haiven-unity-build >/dev/null 2>&1 || true
+          if docker image inspect haiven-unity-licensed:local >/dev/null 2>&1; then
             if [[ -n "$UNITY_SERIAL" ]]; then
-              docker exec --env UNITY_EMAIL --env UNITY_PASSWORD haiven-unity sh -c \
-                'unity-editor -batchmode -nographics -quit -logFile /tmp/return.log -returnlicense \
-                  -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"' \
+              # A fresh container from the committed activation, which build code never touched.
+              printf '%s\n%s\n' "$UNITY_EMAIL" "$UNITY_PASSWORD" |
+                docker run --rm --interactive --hostname haiven-unity --mac-address 02:42:ac:11:00:2a \
+                  --entrypoint sh haiven-unity-licensed:local -c \
+                  'IFS= read -r email && IFS= read -r password || exit 1
+                   unity-editor -batchmode -nographics -quit -logFile /tmp/return.log -returnlicense \
+                     -username "$email" -password "$password"' \
                 || echo "::warning::Return the Unity serial seat by hand."
             fi
-            docker rm --force haiven-unity >/dev/null
+            docker image rm --force haiven-unity-licensed:local >/dev/null
           fi
           sudo rm -rf source
