@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           [[ "$DISPLAY_ID" == "$(jq -r .request_id <<< "$SHADOW_REQUEST")" ]]
-          python builder/.github/shadow-build/build.py plan
+          python -I builder/.github/shadow-build/build.py plan
 
   build:
     # Every Boss Room player cross-builds on Linux in its Unity build module's image.
@@ -98,7 +98,7 @@ jobs:
         run: |
           go_bin="$(go env GOPATH)/bin"
           export PATH="$go_bin:$PATH"
-          python builder/.github/shadow-build/build.py reconstruct --source source \
+          python -I builder/.github/shadow-build/build.py reconstruct --source source \
             --dotnet source --verification "$RUNNER_TEMP/shadow-source.json"
       - name: Fetch the approved Boss Room assets already published here
         working-directory: source
@@ -120,6 +120,9 @@ jobs:
           # state, so build code can read the licence but never the email, password or serial.
           # All three share one hostname and MAC address so the licence's machine binding holds.
           identity=(--hostname haiven-unity --mac-address 02:42:ac:11:00:2a)
+          # The committed image is used only by its immutable ID, kept outside the build mount.
+          image_file="$RUNNER_TEMP/unity-licensed-image"
+          rm -f "$image_file"
           status=0
           if [[ -n "$UNITY_SERIAL" ]]; then
             printf '%s\n%s\n%s\n' "$UNITY_EMAIL" "$UNITY_PASSWORD" "$UNITY_SERIAL" |
@@ -146,16 +149,20 @@ jobs:
           fi
           # Commit even a failed activation so the always-run step can still return a seat.
           if docker container inspect haiven-unity-activate >/dev/null 2>&1; then
-            docker commit haiven-unity-activate haiven-unity-licensed:local >/dev/null
+            image="$(docker commit haiven-unity-activate)"
             docker rm haiven-unity-activate >/dev/null
+            [[ "$image" =~ ^sha256:[0-9a-f]{64}$ ]]
+            printf '%s\n' "$image" > "$image_file"
           fi
           if (( status != 0 )); then
             echo "Unity licence activation failed." >&2
             exit 1
           fi
+          # Mount only the project. The builder checkout, the rest of the workspace and
+          # $RUNNER_TEMP stay out of reach of build code, which runs as root in this container.
           docker run --detach --name haiven-unity-build "${identity[@]}" \
-            --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
-            --entrypoint sleep haiven-unity-licensed:local infinity >/dev/null
+            --volume "$GITHUB_WORKSPACE/source:$GITHUB_WORKSPACE/source" \
+            --entrypoint sleep "$image" infinity >/dev/null
           launcher="$RUNNER_TEMP/unity-editor/unity"
           mkdir -p "$(dirname "$launcher")"
           # shellcheck disable=SC2016 # $PWD and $@ expand when the launcher runs.
@@ -172,7 +179,9 @@ jobs:
         run: |
           go_bin="$(go env GOPATH)/bin"
           export PATH="$go_bin:$PATH"
-          python builder/.github/shadow-build/build.py build --platform "$PLATFORM" --source source \
+          # -I keeps the builder's own directory and the working directory off sys.path, so
+          # nothing the build writes can be imported by the host process that seals the result.
+          python -I builder/.github/shadow-build/build.py build --platform "$PLATFORM" --source source \
             --dotnet source --verification "$RUNNER_TEMP/shadow-source.json" \
             --work "$RUNNER_TEMP/shadow-build" --bundle "$RUNNER_TEMP/build.age"
       - name: Retain encrypted results
@@ -193,19 +202,23 @@ jobs:
         shell: bash
         run: |
           # Force-removing the build container kills anything build code left running in it
-          # before the account is used again.
+          # before the account is used again. Then delete the project it could write, so no
+          # later host command, including checkout's post-job Git cleanup, runs inside it.
           docker rm --force haiven-unity-build >/dev/null 2>&1 || true
-          if docker image inspect haiven-unity-licensed:local >/dev/null 2>&1; then
+          sudo rm -rf source || echo "::warning::Could not remove the build checkout."
+          image_file="$RUNNER_TEMP/unity-licensed-image"
+          image="$(cat "$image_file" 2>/dev/null || true)"
+          if [[ "$image" =~ ^sha256:[0-9a-f]{64}$ ]] && docker image inspect "$image" >/dev/null 2>&1; then
             if [[ -n "$UNITY_SERIAL" ]]; then
               # A fresh container from the committed activation, which build code never touched.
               printf '%s\n%s\n' "$UNITY_EMAIL" "$UNITY_PASSWORD" |
                 docker run --rm --interactive --hostname haiven-unity --mac-address 02:42:ac:11:00:2a \
-                  --entrypoint sh haiven-unity-licensed:local -c \
+                  --entrypoint sh "$image" -c \
                   'IFS= read -r email && IFS= read -r password || exit 1
                    unity-editor -batchmode -nographics -quit -logFile /tmp/return.log -returnlicense \
                      -username "$email" -password "$password"' \
                 || echo "::warning::Return the Unity serial seat by hand."
             fi
-            docker image rm --force haiven-unity-licensed:local >/dev/null
+            docker image rm --force "$image" >/dev/null
           fi
-          sudo rm -rf source
+          rm -f "$image_file"
